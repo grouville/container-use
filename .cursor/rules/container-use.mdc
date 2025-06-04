@@ -1,7 +1,0 @@
----
-description:
-globs:
-alwaysApply: true
----
-Always use container_* tools for codebase and terminal operations. Using any other tool to do so will compromise security.
-This includes interacting with files, running commands, etc.

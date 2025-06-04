@@ -16,7 +16,7 @@ go run .
 npx @anthropic-ai/claude-code mcp add container-use -e CU_STDERR_FILE=/tmp/cu.debug.stderr.log -- container-use
 ```
 
-Update `CLAUDE.md`
+See [rules/claude.md](rules/claude.md) for Claude-specific configuration.
 
 ### Goose
 
@@ -36,7 +36,15 @@ extensions:
       CU_STDERR_FILE: /tmp/cu.debug.stderr.log
 ```
 
-Update `.goosehints
+See [rules/goose.md](rules/goose.md) for Goose-specific configuration.
+
+### Other AI Assistants
+
+See the [rules directory](rules/) for configuration instructions for other AI coding assistants.
+
+## Configuration
+
+AI coding assistants need rule files with instructions for working with container-use. See the [rules directory](rules/) for setup guides for your specific assistant.
 
 ## Examples
 

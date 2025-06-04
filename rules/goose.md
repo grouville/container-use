@@ -1,3 +1,9 @@
+# Goose Rules (.goosehints)
+
+**This file should be copied to your project root as `.goosehints`**
+
+---
+
 ALWAYS use ONLY Environments for ANY and ALL file, code, or shell operations—NO EXCEPTIONS—even for simple or generic requests.
 
 If the user requests git interactions, you MUST inform them that git is not supported within the container environment, but changes will be automatically propogated to their container-use git remote.
