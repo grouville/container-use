@@ -10,17 +10,29 @@ Containerized environments for coding agents
 go run .
 ```
 
-### Claude Code
+### AI Assistant Setup
 
+**Claude Code (MCP)**
 ```sh
 npx @anthropic-ai/claude-code mcp add container-use -e CU_STDERR_FILE=/tmp/cu.debug.stderr.log -- container-use
 ```
 
-Update `CLAUDE.md`
+**Rule Files**
+```sh
+# VS Code / GitHub Copilot
+curl --create-dirs -o .github/copilot-instructions.md https://raw.githubusercontent.com/aluzzardi/container-use/main/rules/agent.md
 
-### Goose
+# Cursor  
+curl --create-dirs -o .cursor/rules/container-use.mdc https://raw.githubusercontent.com/aluzzardi/container-use/main/rules/cursor.mdc
 
-In `~/.config/goose/config.yaml`
+# Other assistants
+curl -o CLAUDE.md https://raw.githubusercontent.com/aluzzardi/container-use/main/rules/agent.md     # Claude Code
+curl -o .goosehints https://raw.githubusercontent.com/aluzzardi/container-use/main/rules/agent.md  # Goose  
+```
+
+#### Goose Configuration
+
+Add this to `~/.config/goose/config.yaml`:
 
 ```yaml
 extensions:
@@ -36,7 +48,11 @@ extensions:
       CU_STDERR_FILE: /tmp/cu.debug.stderr.log
 ```
 
-Update `.goosehints
+See the [rules directory](rules/) for configuration instructions for other AI coding assistants.
+
+## Configuration
+
+AI coding assistants need rule files with instructions for working with container-use. See the [rules directory](rules/) for setup guides for your specific assistant.
 
 ## Examples
 
