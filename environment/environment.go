@@ -514,3 +514,30 @@ func (env *Environment) Terminal(ctx context.Context) error {
 func (env *Environment) Checkpoint(ctx context.Context, target string) (string, error) {
 	return env.container.Publish(ctx, target)
 }
+
+func (env *Environment) Delete(ctx context.Context) error {
+	env.mu.Lock()
+	defer env.mu.Unlock()
+
+	// Attempt to remove the Dagger container explicitly if possible
+	if env.container != nil {
+		// Dagger Go SDK does not have a direct Remove method, but we can try to cancel/close resources
+		// If a method like env.container.Remove(ctx) becomes available, use it here
+		// For now, we can try to Sync with a canceled context to force cleanup
+		cancelCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		defer cancel()
+		_, _ = env.container.Sync(cancelCtx) // Best effort cleanup
+	}
+
+	// Remove config directory from worktree/source
+	cfgPath := path.Join(env.Source, configDir)
+	err := os.RemoveAll(cfgPath)
+	if err != nil {
+		return fmt.Errorf("failed to remove environment config directory: %w", err)
+	}
+
+	// Remove from global environments map
+	delete(environments, env.ID)
+
+	return nil
+}
