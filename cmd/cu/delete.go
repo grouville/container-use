@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 
@@ -19,7 +18,7 @@ var deleteCmd = &cobra.Command{
 		ctx := cmd.Context()
 		envName := args[0]
 
-		dag, err := connectDagger(ctx)
+		dag, err := dagger.Connect(ctx, dagger.WithLogOutput(os.Stderr))
 		if err != nil {
 			return fmt.Errorf("failed to connect to dagger: %w", err)
 		}
@@ -44,10 +43,6 @@ var deleteCmd = &cobra.Command{
 		fmt.Println("To view this change, use: git checkout <branch_name>")
 		return nil
 	},
-}
-
-func connectDagger(ctx context.Context) (*dagger.Client, error) {
-	return dagger.Connect(ctx, dagger.WithLogOutput(os.Stderr))
 }
 
 func init() {
