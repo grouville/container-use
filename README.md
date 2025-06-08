@@ -148,7 +148,7 @@ curl --create-dirs -o .github/copilot-instructions.md https://raw.githubusercont
 ### Run with [Claude Code](https://www.anthropic.com/claude-code)
 
 ```console
-cat ./examples/hello_world.md | claude
+cat ./examples/hello_world.md | claude --dangerously-skip-permissions
 ```
 
 ### Run with [goose](https://block.github.io/goose/)
