@@ -68,7 +68,7 @@ npx @anthropic-ai/claude-code mcp add container-use -- <path to cu> stdio
 Save the CLAUDE.md file at the root of the repository. Alternatively, merge the instructions into your own CLAUDE.md.
 
 ```sh
-curl -o CLAUDE.md https://raw.githubusercontent.com/dagger/container-use/main/rules/agent.md
+curl https://raw.githubusercontent.com/dagger/container-use/main/rules/agent.md >> CLAUDE.md
 ```
 
 ### [goose](https://block.github.io/goose/docs/getting-started/using-extensions#mcp-servers)
