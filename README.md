@@ -54,7 +54,7 @@ or `TARGETPLATFORM=darwin/arm64 make` to build for macOS Apple Silicon.
 
 Enabling `container-use` requires 2 steps:
 
-1. Adding an MCP configuration for `container-use`
+1. Adding an MCP configuration for `container-use` corresponding to the repository.
 2. (Optional) Adding a rule so the agent uses containarized environments.
 
 ### [Claude Code](https://docs.anthropic.com/en/docs/claude-code/tutorials#set-up-model-context-protocol-mcp)
@@ -62,7 +62,8 @@ Enabling `container-use` requires 2 steps:
 Add the container-use MCP:
 
 ```sh
-npx @anthropic-ai/claude-code mcp add container-use -- <path to cu> stdio
+cd /path/to/repository
+npx @anthropic-ai/claude-code mcp add container-use -- <full path to cu command> stdio
 ```
 
 Save the CLAUDE.md file at the root of the repository. Alternatively, merge the instructions into your own CLAUDE.md.
