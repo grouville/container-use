@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -333,4 +334,36 @@ func (u *UserActions) GitCommand(args ...string) string {
 	output, err := repository.RunGitCommand(u.ctx, u.repoDir, args...)
 	require.NoError(u.t, err, "Git command failed: %v", args)
 	return output
+}
+
+// --- CLI command equivalents ---
+// These methods mirror the actual CLI command implementations
+
+// CLIDelete mirrors the 'cu delete' command behavior
+func (u *UserActions) CLIDelete(envID string) error {
+	// Open repository fresh for each delete, exactly like the CLI does
+	repo, err := repository.Open(u.ctx, u.repoDir)
+	if err != nil {
+		return fmt.Errorf("failed to open repository: %w", err)
+	}
+	
+	err = repo.Delete(u.ctx, envID)
+	if err != nil {
+		return fmt.Errorf("failed to delete environment %s: %w", envID, err)
+	}
+	
+	// The CLI prints this message
+	u.t.Logf("Environment '%s' deleted successfully.", envID)
+	return nil
+}
+
+// CLIList mirrors the 'cu list' command behavior
+func (u *UserActions) CLIList() ([]*environment.EnvironmentInfo, error) {
+	// Open repository fresh like the CLI does
+	repo, err := repository.Open(u.ctx, u.repoDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open repository: %w", err)
+	}
+	
+	return repo.List(u.ctx)
 }
