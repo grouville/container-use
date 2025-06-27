@@ -54,6 +54,9 @@ func WithRepository(t *testing.T, name string, setup RepositorySetup, fn func(t 
 	configDir, err := os.MkdirTemp("", "cu-test-config-"+name+"-*")
 	require.NoError(t, err, "Failed to create config dir")
 
+	// Set the base path in context for all operations in this test
+	ctx = context.WithValue(ctx, "container_use_base_path", configDir)
+
 	// Initialize git repo
 	cmds := [][]string{
 		{"init"},
@@ -72,19 +75,19 @@ func WithRepository(t *testing.T, name string, setup RepositorySetup, fn func(t 
 		setup(t, repoDir)
 	}
 
-	// Open repository with isolated base path
-	repo, err := repository.OpenWithBasePath(ctx, repoDir, configDir)
+	// Open repository - it will use the isolated base path from context
+	repo, err := repository.Open(ctx, repoDir)
 	require.NoError(t, err, "Failed to open repository")
 
 	// Create UserActions with extended capabilities
-	user := NewUserActions(t, repo, testDaggerClient).WithDirectAccess(repoDir, configDir)
+	user := NewUserActions(ctx, t, repo, testDaggerClient).WithDirectAccess(repoDir, configDir)
 
 	// Cleanup
 	t.Cleanup(func() {
 		// Clean up any environments created during the test
-		envs, _ := repo.List(context.Background())
+		envs, _ := repo.List(ctx)
 		for _, env := range envs {
-			repo.Delete(context.Background(), env.ID)
+			repo.Delete(ctx, env.ID)
 		}
 
 		// Remove directories
@@ -191,10 +194,10 @@ type UserActions struct {
 	mcp       *MCPToolInvoker
 }
 
-func NewUserActions(t *testing.T, repo *repository.Repository, dag *dagger.Client) *UserActions {
+func NewUserActions(ctx context.Context, t *testing.T, repo *repository.Repository, dag *dagger.Client) *UserActions {
 	ua := &UserActions{
 		t:    t,
-		ctx:  context.Background(),
+		ctx:  ctx,
 		repo: repo,
 		dag:  dag,
 	}
@@ -202,7 +205,6 @@ func NewUserActions(t *testing.T, repo *repository.Repository, dag *dagger.Clien
 		t:         t,
 		ctx:       ua.ctx,
 		dag:       dag,
-		repo:      repo,
 		repoDir:   "",
 		configDir: "",
 	}
@@ -213,10 +215,9 @@ func NewUserActions(t *testing.T, repo *repository.Repository, dag *dagger.Clien
 func (u *UserActions) WithDirectAccess(repoDir, configDir string) *UserActions {
 	u.repoDir = repoDir
 	u.configDir = configDir
-	// Update MCP invoker with paths and repository
+	// Update MCP invoker with paths
 	u.mcp.repoDir = repoDir
 	u.mcp.configDir = configDir
-	u.mcp.repo = u.repo
 	return u
 }
 
@@ -225,7 +226,6 @@ type MCPToolInvoker struct {
 	t         *testing.T
 	ctx       context.Context
 	dag       *dagger.Client
-	repo      *repository.Repository
 	repoDir   string
 	configDir string
 }
@@ -254,9 +254,8 @@ func (m *MCPToolInvoker) CallTool(toolName string, params map[string]interface{}
 	// Create request
 	request := createMCPRequest(toolName, params)
 
-	// Set up context with dagger client and test repository
+	// Set up context with dagger client
 	ctx := context.WithValue(m.ctx, "dagger_client", m.dag)
-	ctx = context.WithValue(ctx, "test_repository", m.repo)
 
 	// Call the handler
 	return tool.Handler(ctx, request)
@@ -555,22 +554,19 @@ func (u *UserActions) GitCommand(args ...string) string {
 // CLIDelete mirrors the 'cu delete' command behavior
 func (u *UserActions) CLIDelete(envID string) error {
 	// Call the actual CLI operation to test real user flow
-	ctx := context.WithValue(u.ctx, "container_use_base_path", u.configDir)
-	return cli.DeleteEnvironments(ctx, u.repoDir, []string{envID})
+	return cli.DeleteEnvironments(u.ctx, u.repoDir, []string{envID})
 }
 
 // CLIList mirrors the 'cu list' command behavior
 func (u *UserActions) CLIList() ([]*environment.EnvironmentInfo, error) {
 	// Call the actual CLI operation to test real user flow
-	ctx := context.WithValue(u.ctx, "container_use_base_path", u.configDir)
-	return cli.ListEnvironments(ctx, u.repoDir)
+	return cli.ListEnvironments(u.ctx, u.repoDir)
 }
 
 // CLICheckout mirrors the 'cu checkout' command behavior
 func (u *UserActions) CLICheckout(envID string) (string, error) {
 	// Call the actual CLI operation to test real user flow
-	ctx := context.WithValue(u.ctx, "container_use_base_path", u.configDir)
-	return cli.CheckoutEnvironment(ctx, u.repoDir, envID)
+	return cli.CheckoutEnvironment(u.ctx, u.repoDir, envID)
 }
 
 // CLILog mirrors the 'cu log' command behavior (non-interactive version for tests)
