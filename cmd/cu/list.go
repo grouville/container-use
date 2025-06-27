@@ -5,7 +5,7 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/dagger/container-use/repository"
+	"github.com/dagger/container-use/cli"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 )
@@ -15,15 +15,12 @@ var listCmd = &cobra.Command{
 	Short: "List environments",
 	Long:  `List environments filtering the git remotes`,
 	RunE: func(app *cobra.Command, _ []string) error {
-		ctx := app.Context()
-		repo, err := repository.Open(ctx, ".")
+		// Uses shared implementation from cli package
+		envInfos, err := cli.ListEnvironments(app.Context(), ".")
 		if err != nil {
 			return err
 		}
-		envInfos, err := repo.List(ctx)
-		if err != nil {
-			return err
-		}
+
 		if quiet, _ := app.Flags().GetBool("quiet"); quiet {
 			for _, envInfo := range envInfos {
 				fmt.Println(envInfo.ID)

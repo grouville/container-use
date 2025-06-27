@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"dagger.io/dagger"
+	"github.com/dagger/container-use/cli"
 	"github.com/dagger/container-use/environment"
 	"github.com/dagger/container-use/mcpserver"
 	"github.com/dagger/container-use/repository"
@@ -261,7 +262,6 @@ func (m *MCPToolInvoker) CallTool(toolName string, params map[string]interface{}
 	return tool.Handler(ctx, request)
 }
 
-
 // FileWrite mirrors environment_file_write MCP tool behavior
 func (u *UserActions) FileWrite(envID, targetFile, contents, explanation string) {
 	result, err := u.mcp.CallTool("environment_file_write", map[string]interface{}{
@@ -285,7 +285,7 @@ func (u *UserActions) RunCommand(envID, command, explanation string) string {
 	})
 	require.NoError(u.t, err, "Run command should succeed")
 	require.NotNil(u.t, result, "Run command should return a result")
-	
+
 	// Extract the output from the result
 	if len(result.Content) > 0 {
 		if textContent, ok := result.Content[0].(mcp.TextContent); ok {
@@ -298,7 +298,7 @@ func (u *UserActions) RunCommand(envID, command, explanation string) string {
 			return output
 		}
 	}
-	
+
 	return ""
 }
 
@@ -310,7 +310,7 @@ func (u *UserActions) CreateEnvironment(title, explanation string) *environment.
 	})
 	require.NoError(u.t, err, "Create environment should succeed")
 	require.NotNil(u.t, result, "Create environment should return a result")
-	
+
 	// Since we need to return an actual Environment object for the tests to work,
 	// we still need to get it from the repository after creation
 	// The MCP tool returns JSON with the environment ID
@@ -326,7 +326,7 @@ func (u *UserActions) CreateEnvironment(title, explanation string) *environment.
 			}
 		}
 	}
-	
+
 	u.t.Fatal("Failed to extract environment ID from create response")
 	return nil
 }
@@ -334,7 +334,7 @@ func (u *UserActions) CreateEnvironment(title, explanation string) *environment.
 // UpdateEnvironment mirrors environment_update MCP tool behavior
 func (u *UserActions) UpdateEnvironment(envID, title, explanation string, config *environment.EnvironmentConfig) {
 	params := map[string]interface{}{
-		"environment_id":  envID,
+		"environment_id": envID,
 		"title":          title,
 		"explanation":    explanation,
 		"instructions":   config.Instructions,
@@ -344,7 +344,7 @@ func (u *UserActions) UpdateEnvironment(envID, title, explanation string, config
 		"secrets":        config.Secrets,
 		"workdir":        config.Workdir,
 	}
-	
+
 	result, err := u.mcp.CallTool("environment_update", params)
 	require.NoError(u.t, err, "UpdateEnvironment should succeed")
 	require.NotNil(u.t, result, "UpdateEnvironment should return a result")
@@ -364,21 +364,21 @@ func (u *UserActions) FileDelete(envID, targetFile, explanation string) {
 // FileRead mirrors environment_file_read MCP tool behavior (read-only, no update)
 func (u *UserActions) FileRead(envID, targetFile string) string {
 	result, err := u.mcp.CallTool("environment_file_read", map[string]interface{}{
-		"environment_id":           envID,
+		"environment_id":          envID,
 		"target_file":             targetFile,
 		"should_read_entire_file": true,
 		"explanation":             "Reading file for test",
 	})
 	require.NoError(u.t, err, "FileRead should succeed")
 	require.NotNil(u.t, result, "FileRead should return a result")
-	
+
 	// Extract the content from the result
 	if len(result.Content) > 0 {
 		if textContent, ok := result.Content[0].(mcp.TextContent); ok {
 			return textContent.Text
 		}
 	}
-	
+
 	return ""
 }
 
@@ -391,14 +391,14 @@ func (u *UserActions) FileList(envID, path, explanation string) string {
 	})
 	require.NoError(u.t, err, "FileList should succeed")
 	require.NotNil(u.t, result, "FileList should return a result")
-	
+
 	// Extract the content from the result
 	if len(result.Content) > 0 {
 		if textContent, ok := result.Content[0].(mcp.TextContent); ok {
 			return textContent.Text
 		}
 	}
-	
+
 	return ""
 }
 
@@ -410,7 +410,7 @@ func (u *UserActions) AddService(envID, name, image, command, explanation string
 		"image":          image,
 		"explanation":    explanation,
 	}
-	
+
 	if command != "" {
 		params["command"] = command
 	}
@@ -423,11 +423,11 @@ func (u *UserActions) AddService(envID, name, image, command, explanation string
 	if len(secrets) > 0 {
 		params["secrets"] = secrets
 	}
-	
+
 	result, err := u.mcp.CallTool("environment_add_service", params)
 	require.NoError(u.t, err, "AddService should succeed")
 	require.NotNil(u.t, result, "AddService should return a result")
-	
+
 	// Extract service information from the result
 	if len(result.Content) > 0 {
 		if textContent, ok := result.Content[0].(mcp.TextContent); ok {
@@ -443,7 +443,7 @@ func (u *UserActions) AddService(envID, name, image, command, explanation string
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -456,14 +456,14 @@ func (u *UserActions) Checkpoint(envID, destination, explanation string) string 
 	})
 	require.NoError(u.t, err, "Checkpoint should succeed")
 	require.NotNil(u.t, result, "Checkpoint should return a result")
-	
+
 	// Extract the checkpoint info from the result
 	if len(result.Content) > 0 {
 		if textContent, ok := result.Content[0].(mcp.TextContent); ok {
 			return textContent.Text
 		}
 	}
-	
+
 	return ""
 }
 
@@ -475,7 +475,7 @@ func (u *UserActions) OpenEnvironment(envID, explanation string) *environment.En
 	})
 	require.NoError(u.t, err, "OpenEnvironment should succeed")
 	require.NotNil(u.t, result, "OpenEnvironment should return a result")
-	
+
 	// Since we need to return an actual Environment object for the tests to work,
 	// we get it from the repository
 	env, err := u.repo.Get(u.ctx, u.dag, envID)
@@ -548,33 +548,50 @@ func (u *UserActions) GitCommand(args ...string) string {
 }
 
 // --- CLI command equivalents ---
-// These methods mirror the actual CLI command implementations
+// These methods mirror the behavior of CLI commands but use the test repository
+// This is necessary because CLI commands use repository.Open() while tests use
+// repository.OpenWithBasePath() for isolation
 
 // CLIDelete mirrors the 'cu delete' command behavior
 func (u *UserActions) CLIDelete(envID string) error {
-	// Open repository fresh for each delete, exactly like the CLI does
-	repo, err := repository.Open(u.ctx, u.repoDir)
-	if err != nil {
-		return fmt.Errorf("failed to open repository: %w", err)
-	}
-	
-	err = repo.Delete(u.ctx, envID)
-	if err != nil {
-		return fmt.Errorf("failed to delete environment %s: %w", envID, err)
-	}
-	
-	// The CLI prints this message
-	u.t.Logf("Environment '%s' deleted successfully.", envID)
-	return nil
+	// Call the actual CLI operation to test real user flow
+	ctx := context.WithValue(u.ctx, "container_use_base_path", u.configDir)
+	return cli.DeleteEnvironments(ctx, u.repoDir, []string{envID})
 }
 
 // CLIList mirrors the 'cu list' command behavior
 func (u *UserActions) CLIList() ([]*environment.EnvironmentInfo, error) {
-	// Open repository fresh like the CLI does
-	repo, err := repository.Open(u.ctx, u.repoDir)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open repository: %w", err)
+	// Call the actual CLI operation to test real user flow
+	ctx := context.WithValue(u.ctx, "container_use_base_path", u.configDir)
+	return cli.ListEnvironments(ctx, u.repoDir)
+}
+
+// CLICheckout mirrors the 'cu checkout' command behavior
+func (u *UserActions) CLICheckout(envID string) (string, error) {
+	// Call the actual CLI operation to test real user flow
+	ctx := context.WithValue(u.ctx, "container_use_base_path", u.configDir)
+	return cli.CheckoutEnvironment(ctx, u.repoDir, envID)
+}
+
+// CLILog mirrors the 'cu log' command behavior (non-interactive version for tests)
+func (u *UserActions) CLILog(envID string) (string, error) {
+	// Verify environment exists using test repository
+	if _, err := u.repo.Get(u.ctx, u.dag, envID); err != nil {
+		return "", fmt.Errorf("environment %s not found: %w", envID, err)
 	}
-	
-	return repo.List(u.ctx)
+	// Use non-interactive git log suitable for tests
+	ref := fmt.Sprintf("container-use/%s", envID)
+	return repository.RunGitCommand(u.ctx, u.repoDir, "log", "--oneline", "-10", ref)
+}
+
+// CLIMerge mirrors the 'cu merge' command behavior (non-interactive version for tests)
+func (u *UserActions) CLIMerge(envID string) error {
+	// Verify environment exists using test repository
+	if _, err := u.repo.Get(u.ctx, u.dag, envID); err != nil {
+		return fmt.Errorf("environment %s not found: %w", envID, err)
+	}
+	// Perform non-interactive merge suitable for tests
+	ref := fmt.Sprintf("container-use/%s", envID)
+	_, err := repository.RunGitCommand(u.ctx, u.repoDir, "merge", "--no-edit", ref)
+	return err
 }

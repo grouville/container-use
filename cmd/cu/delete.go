@@ -1,9 +1,7 @@
 package main
 
 import (
-	"fmt"
-
-	"github.com/dagger/container-use/repository"
+	"github.com/dagger/container-use/cli"
 	"github.com/spf13/cobra"
 )
 
@@ -14,20 +12,8 @@ var deleteCmd = &cobra.Command{
 	Args:              cobra.MinimumNArgs(1),
 	ValidArgsFunction: suggestEnvironments,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := cmd.Context()
-
-		for _, envID := range args {
-			repo, err := repository.Open(ctx, ".")
-			if err != nil {
-				return fmt.Errorf("failed to open repository: %w", err)
-			}
-			if err := repo.Delete(ctx, envID); err != nil {
-				return fmt.Errorf("failed to delete environment: %w", err)
-			}
-
-			fmt.Printf("Environment '%s' deleted successfully.\n", envID)
-		}
-		return nil
+		// Uses shared implementation from cli package
+		return cli.DeleteEnvironments(cmd.Context(), ".", args)
 	},
 }
 
