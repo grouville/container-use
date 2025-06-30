@@ -185,9 +185,8 @@ func TestSystemHandlesProblematicFiles(t *testing.T) {
 }
 
 // TestDeleteCommandBehavior verifies cu delete command properly removes environments
-// This reproduces issue #110 where delete was creating new containers instead of removing them
+// This tries to test issue #110 where delete was creating new containers instead of removing them (unable to reproduce, but covers the scenario)
 func TestDeleteCommandBehavior(t *testing.T) {
-	t.Skip("Skipping test - CLI commands use different repository initialization")
 	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping integration test")

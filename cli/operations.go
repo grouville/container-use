@@ -40,12 +40,12 @@ func ListEnvironments(ctx context.Context, repoPath string) ([]*environment.Envi
 
 // CheckoutEnvironment performs the core checkout operation
 // Used by both 'cu checkout' command and integration tests
-func CheckoutEnvironment(ctx context.Context, repoPath string, envID string) (string, error) {
+func CheckoutEnvironment(ctx context.Context, repoPath string, envID, branch string) (string, error) {
 	repo, err := repository.Open(ctx, repoPath)
 	if err != nil {
 		return "", err
 	}
-	return repo.Checkout(ctx, envID)
+	return repo.Checkout(ctx, envID, branch)
 }
 
 // GetEnvironmentLog returns git log for an environment

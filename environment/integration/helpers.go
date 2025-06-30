@@ -564,9 +564,9 @@ func (u *UserActions) CLIList() ([]*environment.EnvironmentInfo, error) {
 }
 
 // CLICheckout mirrors the 'cu checkout' command behavior
-func (u *UserActions) CLICheckout(envID string) (string, error) {
+func (u *UserActions) CLICheckout(envID, branchName string) (string, error) {
 	// Call the actual CLI operation to test real user flow
-	return cli.CheckoutEnvironment(u.ctx, u.repoDir, envID)
+	return cli.CheckoutEnvironment(u.ctx, u.repoDir, envID, branchName)
 }
 
 // CLILog mirrors the 'cu log' command behavior (non-interactive version for tests)
