@@ -18,7 +18,6 @@ import (
 
 // TestGitAuditTrail verifies that all operations are tracked in git
 func TestGitAuditTrail(t *testing.T) {
-	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping integration test")
 	}
@@ -62,7 +61,6 @@ func TestGitAuditTrail(t *testing.T) {
 
 // TestEnvironmentIsolation verifies that changes in one environment don't affect others
 func TestEnvironmentIsolation(t *testing.T) {
-	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping integration test")
 	}
@@ -109,7 +107,6 @@ func TestEnvironmentIsolation(t *testing.T) {
 
 // TestSystemHandlesProblematicFiles verifies edge cases don't break the system
 func TestSystemHandlesProblematicFiles(t *testing.T) {
-	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping integration test")
 	}
@@ -186,7 +183,6 @@ func TestSystemHandlesProblematicFiles(t *testing.T) {
 
 // Large project performance ensures the system scales to real-world codebases
 func TestLargeProjectPerformance(t *testing.T) {
-	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping performance test")
 	}
@@ -219,7 +215,6 @@ func TestLargeProjectPerformance(t *testing.T) {
 
 // TestWorktreeUpdatesAreVisibleAfterRebuild verifies file changes persist through rebuilds
 func TestWorktreeUpdatesAreVisibleAfterRebuild(t *testing.T) {
-	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping integration test")
 	}
@@ -259,7 +254,6 @@ func TestWorktreeUpdatesAreVisibleAfterRebuild(t *testing.T) {
 
 // TestWeirdUserScenarios verifies edge case handling
 func TestWeirdUserScenarios(t *testing.T) {
-	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping integration test")
 	}
@@ -403,7 +397,6 @@ func TestWeirdUserScenarios(t *testing.T) {
 
 // TestEnvironmentConfigurationPersists verifies configuration persistence
 func TestEnvironmentConfigurationPersists(t *testing.T) {
-	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping integration test")
 	}

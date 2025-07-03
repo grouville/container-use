@@ -2,12 +2,10 @@ package integration
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"testing"
 
@@ -15,7 +13,6 @@ import (
 	"github.com/dagger/container-use/environment"
 	"github.com/dagger/container-use/mcpserver"
 	"github.com/dagger/container-use/repository"
-	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -53,8 +50,9 @@ func WithRepository(t *testing.T, name string, setup RepositorySetup, fn func(t 
 	configDir, err := os.MkdirTemp("", "cu-test-config-"+name+"-*")
 	require.NoError(t, err, "Failed to create config dir")
 
-	// Set the base path in context for all operations in this test
-	ctx = context.WithValue(ctx, "container_use_base_path", configDir)
+	// Override the global config path for this test
+	cleanup := repository.SetTestConfigPath(configDir)
+	t.Cleanup(cleanup)
 
 	// Initialize git repo
 	cmds := [][]string{
@@ -190,295 +188,99 @@ type UserActions struct {
 	dag       *dagger.Client
 	repoDir   string // Source directory (for direct manipulation)
 	configDir string // Container-use config directory
-	mcp       *MCPToolInvoker
 }
 
 func NewUserActions(ctx context.Context, t *testing.T, repo *repository.Repository, dag *dagger.Client) *UserActions {
-	ua := &UserActions{
+	return &UserActions{
 		t:    t,
 		ctx:  ctx,
 		repo: repo,
 		dag:  dag,
 	}
-	ua.mcp = &MCPToolInvoker{
-		t:         t,
-		ctx:       ua.ctx,
-		dag:       dag,
-		repoDir:   "",
-		configDir: "",
-	}
-	return ua
 }
 
 // WithDirectAccess adds direct filesystem access for edge case testing
 func (u *UserActions) WithDirectAccess(repoDir, configDir string) *UserActions {
 	u.repoDir = repoDir
 	u.configDir = configDir
-	// Update MCP invoker with paths
-	u.mcp.repoDir = repoDir
-	u.mcp.configDir = configDir
 	return u
 }
 
-// MCPToolInvoker provides direct access to MCP tool handlers for testing
-type MCPToolInvoker struct {
-	t         *testing.T
-	ctx       context.Context
-	dag       *dagger.Client
-	repoDir   string
-	configDir string
-}
-
-// createMCPRequest creates an MCP CallToolRequest from a map of parameters
-func createMCPRequest(toolName string, params map[string]interface{}) mcp.CallToolRequest {
-	req := mcp.CallToolRequest{}
-	req.Params.Name = toolName
-	req.Params.Arguments = params
-	return req
-}
-
-// CallTool invokes an MCP tool by name with the given parameters
-func (m *MCPToolInvoker) CallTool(toolName string, params map[string]interface{}) (*mcp.CallToolResult, error) {
-	// Add common environment_source parameter if not provided
-	if _, ok := params["environment_source"]; !ok && m.repoDir != "" {
-		params["environment_source"] = m.repoDir
-	}
-
-	// Find the tool
-	tool := mcpserver.GetToolByName(toolName)
-	if tool == nil {
-		return nil, fmt.Errorf("tool not found: %s", toolName)
-	}
-
-	// Create request
-	request := createMCPRequest(toolName, params)
-
-	// Set up context with dagger client
-	ctx := context.WithValue(m.ctx, "dagger_client", m.dag)
-
-	// Call the handler
-	return tool.Handler(ctx, request)
-}
 
 
 // FileWrite mirrors environment_file_write MCP tool behavior
 func (u *UserActions) FileWrite(envID, targetFile, contents, explanation string) {
-	result, err := u.mcp.CallTool("environment_file_write", map[string]interface{}{
-		"environment_id": envID,
-		"target_file":    targetFile,
-		"contents":       contents,
-		"explanation":    explanation,
-	})
+	err := mcpserver.WriteEnvironmentFile(u.ctx, u.dag, u.repoDir, envID, targetFile, contents, explanation)
 	require.NoError(u.t, err, "FileWrite should succeed")
-	require.NotNil(u.t, result, "FileWrite should return a result")
 }
 
 // RunCommand mirrors environment_run_cmd MCP tool behavior
 func (u *UserActions) RunCommand(envID, command, explanation string) string {
-	result, err := u.mcp.CallTool("environment_run_cmd", map[string]interface{}{
-		"environment_id": envID,
-		"command":        command,
-		"explanation":    explanation,
-		"shell":          "/bin/sh",
-		"background":     false,
-	})
+	result, err := mcpserver.RunEnvironmentCommand(u.ctx, u.dag, u.repoDir, envID, command, "/bin/sh", explanation, false, false, nil)
 	require.NoError(u.t, err, "Run command should succeed")
 	require.NotNil(u.t, result, "Run command should return a result")
 	
-	// Extract the output from the result
-	if len(result.Content) > 0 {
-		if textContent, ok := result.Content[0].(mcp.TextContent); ok {
-			// The tool appends additional info, but we want just the output
-			// Split on the newline and return the first part
-			output := textContent.Text
-			if idx := strings.Index(output, "\n\nAny changes to the container workdir"); idx > 0 {
-				output = output[:idx]
-			}
-			return output
-		}
-	}
-	
-	return ""
+	// For non-background commands, result is a string
+	output, ok := result.(string)
+	require.True(u.t, ok, "Run command should return string output")
+	return output
 }
 
 // CreateEnvironment mirrors environment_create MCP tool behavior
 func (u *UserActions) CreateEnvironment(title, explanation string) *environment.Environment {
-	result, err := u.mcp.CallTool("environment_create", map[string]interface{}{
-		"title":       title,
-		"explanation": explanation,
-	})
+	env, err := mcpserver.CreateEnvironment(u.ctx, u.dag, u.repoDir, title, explanation)
 	require.NoError(u.t, err, "Create environment should succeed")
-	require.NotNil(u.t, result, "Create environment should return a result")
-	
-	// Since we need to return an actual Environment object for the tests to work,
-	// we still need to get it from the repository after creation
-	// The MCP tool returns JSON with the environment ID
-	if len(result.Content) > 0 {
-		if textContent, ok := result.Content[0].(mcp.TextContent); ok {
-			var resp struct {
-				ID string `json:"id"`
-			}
-			if err := json.Unmarshal([]byte(textContent.Text), &resp); err == nil && resp.ID != "" {
-				env, err := u.repo.Get(u.ctx, u.dag, resp.ID)
-				require.NoError(u.t, err, "Should be able to get created environment")
-				return env
-			}
-		}
-	}
-	
-	u.t.Fatal("Failed to extract environment ID from create response")
-	return nil
+	require.NotNil(u.t, env, "Create environment should return an environment")
+	return env
 }
 
 // UpdateEnvironment mirrors environment_update MCP tool behavior
 func (u *UserActions) UpdateEnvironment(envID, title, explanation string, config *environment.EnvironmentConfig) {
-	params := map[string]interface{}{
-		"environment_id":  envID,
-		"title":          title,
-		"explanation":    explanation,
-		"instructions":   config.Instructions,
-		"base_image":     config.BaseImage,
-		"setup_commands": config.SetupCommands,
-		"envs":           config.Env,
-		"secrets":        config.Secrets,
-		"workdir":        config.Workdir,
-	}
-	
-	result, err := u.mcp.CallTool("environment_update", params)
+	_, err := mcpserver.UpdateEnvironment(u.ctx, u.dag, u.repoDir, envID, title, config.Instructions, config.BaseImage, explanation, config.SetupCommands, config.Env, config.Secrets)
 	require.NoError(u.t, err, "UpdateEnvironment should succeed")
-	require.NotNil(u.t, result, "UpdateEnvironment should return a result")
 }
 
 // FileDelete mirrors environment_file_delete MCP tool behavior
 func (u *UserActions) FileDelete(envID, targetFile, explanation string) {
-	result, err := u.mcp.CallTool("environment_file_delete", map[string]interface{}{
-		"environment_id": envID,
-		"target_file":    targetFile,
-		"explanation":    explanation,
-	})
+	err := mcpserver.DeleteEnvironmentFile(u.ctx, u.dag, u.repoDir, envID, targetFile, explanation)
 	require.NoError(u.t, err, "FileDelete should succeed")
-	require.NotNil(u.t, result, "FileDelete should return a result")
 }
 
 // FileRead mirrors environment_file_read MCP tool behavior (read-only, no update)
 func (u *UserActions) FileRead(envID, targetFile string) string {
-	result, err := u.mcp.CallTool("environment_file_read", map[string]interface{}{
-		"environment_id":           envID,
-		"target_file":             targetFile,
-		"should_read_entire_file": true,
-		"explanation":             "Reading file for test",
-	})
+	content, err := mcpserver.ReadEnvironmentFile(u.ctx, u.dag, u.repoDir, envID, targetFile, true, 0, 0)
 	require.NoError(u.t, err, "FileRead should succeed")
-	require.NotNil(u.t, result, "FileRead should return a result")
-	
-	// Extract the content from the result
-	if len(result.Content) > 0 {
-		if textContent, ok := result.Content[0].(mcp.TextContent); ok {
-			return textContent.Text
-		}
-	}
-	
-	return ""
+	return content
 }
 
 // FileList mirrors environment_file_list MCP tool behavior
 func (u *UserActions) FileList(envID, path, explanation string) string {
-	result, err := u.mcp.CallTool("environment_file_list", map[string]interface{}{
-		"environment_id": envID,
-		"path":           path,
-		"explanation":    explanation,
-	})
+	content, err := mcpserver.ListEnvironmentFiles(u.ctx, u.dag, u.repoDir, envID, path)
 	require.NoError(u.t, err, "FileList should succeed")
-	require.NotNil(u.t, result, "FileList should return a result")
-	
-	// Extract the content from the result
-	if len(result.Content) > 0 {
-		if textContent, ok := result.Content[0].(mcp.TextContent); ok {
-			return textContent.Text
-		}
-	}
-	
-	return ""
+	return content
 }
 
 // AddService mirrors environment_add_service MCP tool behavior
 func (u *UserActions) AddService(envID, name, image, command, explanation string, ports []int, envs []string, secrets []string) *environment.Service {
-	params := map[string]interface{}{
-		"environment_id": envID,
-		"name":           name,
-		"image":          image,
-		"explanation":    explanation,
-	}
-	
-	if command != "" {
-		params["command"] = command
-	}
-	if len(ports) > 0 {
-		params["ports"] = ports
-	}
-	if len(envs) > 0 {
-		params["envs"] = envs
-	}
-	if len(secrets) > 0 {
-		params["secrets"] = secrets
-	}
-	
-	result, err := u.mcp.CallTool("environment_add_service", params)
+	service, err := mcpserver.AddEnvironmentService(u.ctx, u.dag, u.repoDir, envID, name, image, command, explanation, ports, envs, secrets)
 	require.NoError(u.t, err, "AddService should succeed")
-	require.NotNil(u.t, result, "AddService should return a result")
-	
-	// Extract service information from the result
-	if len(result.Content) > 0 {
-		if textContent, ok := result.Content[0].(mcp.TextContent); ok {
-			// Parse the JSON response to get service info
-			// The response format is: "Service added and started successfully: <json>"
-			jsonStart := strings.Index(textContent.Text, "{")
-			if jsonStart >= 0 {
-				jsonStr := textContent.Text[jsonStart:]
-				var service environment.Service
-				if err := json.Unmarshal([]byte(jsonStr), &service); err == nil {
-					return &service
-				}
-			}
-		}
-	}
-	
-	return nil
+	require.NotNil(u.t, service, "AddService should return a service")
+	return service
 }
 
 // Checkpoint mirrors environment_checkpoint MCP tool behavior
 func (u *UserActions) Checkpoint(envID, destination, explanation string) string {
-	result, err := u.mcp.CallTool("environment_checkpoint", map[string]interface{}{
-		"environment_id": envID,
-		"destination":    destination,
-		"explanation":    explanation,
-	})
+	endpoint, err := mcpserver.CheckpointEnvironment(u.ctx, u.dag, u.repoDir, envID, destination, explanation)
 	require.NoError(u.t, err, "Checkpoint should succeed")
-	require.NotNil(u.t, result, "Checkpoint should return a result")
-	
-	// Extract the checkpoint info from the result
-	if len(result.Content) > 0 {
-		if textContent, ok := result.Content[0].(mcp.TextContent); ok {
-			return textContent.Text
-		}
-	}
-	
-	return ""
+	// Return the message that would be shown to the user
+	return fmt.Sprintf("Checkpoint pushed to %q. You MUST use the full content addressed (@sha256:...) reference in `docker` commands. The entrypoint is set to `sh`, keep that in mind when giving commands to the container.", endpoint)
 }
 
 // OpenEnvironment mirrors environment_open MCP tool behavior
 func (u *UserActions) OpenEnvironment(envID, explanation string) *environment.Environment {
-	result, err := u.mcp.CallTool("environment_open", map[string]interface{}{
-		"environment_id": envID,
-		"explanation":    explanation,
-	})
+	env, err := mcpserver.GetEnvironmentFromSource(u.ctx, u.dag, u.repoDir, envID)
 	require.NoError(u.t, err, "OpenEnvironment should succeed")
-	require.NotNil(u.t, result, "OpenEnvironment should return a result")
-	
-	// Since we need to return an actual Environment object for the tests to work,
-	// we get it from the repository
-	env, err := u.repo.Get(u.ctx, u.dag, envID)
-	require.NoError(u.t, err, "Should be able to get opened environment")
+	require.NotNil(u.t, env, "OpenEnvironment should return an environment")
 	return env
 }
 
