@@ -15,7 +15,6 @@ import (
 	"slices"
 	"strings"
 
-	"dagger.io/dagger"
 	"github.com/dagger/container-use/environment"
 	"github.com/mitchellh/go-homedir"
 )
@@ -153,6 +152,7 @@ func (r *Repository) initializeWorktree(ctx context.Context, id string) (string,
 	return worktreePath, nil
 }
 
+// propagateToWorktree saves environment state to git
 func (r *Repository) propagateToWorktree(ctx context.Context, env *environment.Environment, explanation string) (rerr error) {
 	slog.Info("Propagating to worktree...",
 		"environment.id", env.ID,
@@ -166,18 +166,18 @@ func (r *Repository) propagateToWorktree(ctx context.Context, env *environment.E
 			"err", rerr)
 	}()
 
-	if err := r.exportEnvironment(ctx, env); err != nil {
-		return err
-	}
-
+	// No need to export anything - worktree is volume mounted
 	worktreePath, err := r.WorktreePath(env.ID)
 	if err != nil {
 		return fmt.Errorf("failed to get worktree path: %w", err)
 	}
+
+	// Commit any changes in the worktree
 	if err := r.commitWorktreeChanges(ctx, worktreePath, explanation); err != nil {
 		return fmt.Errorf("failed to commit worktree changes: %w", err)
 	}
 
+	// Save state to git notes
 	if err := r.saveState(ctx, env); err != nil {
 		return fmt.Errorf("failed to add notes: %w", err)
 	}
@@ -202,15 +202,15 @@ func (r *Repository) exportEnvironment(ctx context.Context, env *environment.Env
 		return fmt.Errorf("failed to get worktree path: %w", err)
 	}
 
-	_, err = env.Workdir().
-		WithNewFile(".git", worktreePointer).
-		Export(
-			ctx,
-			worktreePath,
-			dagger.DirectoryExportOpts{Wipe: true},
-		)
-	if err != nil {
-		return err
+	// With Docker volumes, the worktree is already mounted and changes are reflected immediately
+	// No need to export anything
+
+	// Just ensure the .git file exists in the worktree
+	gitFilePath := filepath.Join(worktreePath, ".git")
+	if _, err := os.Stat(gitFilePath); os.IsNotExist(err) {
+		if err := os.WriteFile(gitFilePath, []byte(worktreePointer), 0644); err != nil {
+			return fmt.Errorf("failed to write .git file: %w", err)
+		}
 	}
 
 	return nil
@@ -218,7 +218,8 @@ func (r *Repository) exportEnvironment(ctx context.Context, env *environment.Env
 func (r *Repository) propagateGitNotes(ctx context.Context, ref string) error {
 	fullRef := fmt.Sprintf("refs/notes/%s", ref)
 	fetch := func() error {
-		_, err := RunGitCommand(ctx, r.userRepoPath, "fetch", containerUseRemote, fullRef+":"+fullRef)
+		// Force fetch to avoid conflicts
+		_, err := RunGitCommand(ctx, r.userRepoPath, "fetch", containerUseRemote, fullRef+":"+fullRef, "--force")
 		return err
 	}
 

@@ -11,8 +11,20 @@ type State struct {
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
 
 	Config    *EnvironmentConfig `json:"config,omitempty"`
-	Container string             `json:"container,omitempty"`
+	Container string             `json:"container,omitempty"` // Current container ID (cosmos) or state ID (dagger)
 	Title     string             `json:"title,omitempty"`
+	
+	// Cosmos-specific: track snapshots
+	Snapshots []Snapshot `json:"snapshots,omitempty"`
+}
+
+// Snapshot represents a point-in-time container state
+type Snapshot struct {
+	ID        string    `json:"id"`        // Docker imagei ID
+	GitCommit string    `json:"git_commit"` // Associated git commit
+	Message   string    `json:"message"`    // Snapshot description
+	Tools     []string  `json:"tools"`      // Tools executed before snapshot
+	Timestamp time.Time `json:"timestamp"`
 }
 
 func (s *State) Marshal() ([]byte, error) {

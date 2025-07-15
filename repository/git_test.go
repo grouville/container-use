@@ -176,7 +176,7 @@ func writeFile(t *testing.T, dir, name, content string) {
 	require.NoError(t, err)
 }
 
-func writeBinaryFile(t *testing.T, dir, name string, size int) {
+
 	t.Helper()
 	path := filepath.Join(dir, name)
 	os.MkdirAll(filepath.Dir(path), 0755)

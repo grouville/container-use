@@ -12,7 +12,6 @@ import (
 	"sort"
 	"strings"
 
-	"dagger.io/dagger"
 	"github.com/dagger/container-use/environment"
 	petname "github.com/dustinkirkland/golang-petname"
 )
@@ -143,32 +142,15 @@ func (r *Repository) exists(ctx context.Context, id string) error {
 }
 
 // Create creates a new environment with the given description and explanation.
-// Requires a dagger client for container operations during environment initialization.
-func (r *Repository) Create(ctx context.Context, dag *dagger.Client, description, explanation string) (*environment.Environment, error) {
+func (r *Repository) Create(ctx context.Context, _ interface{}, description, explanation string) (*environment.Environment, error) {
 	id := petname.Generate(2, "-")
 	worktree, err := r.initializeWorktree(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	worktreeHead, err := RunGitCommand(ctx, worktree, "rev-parse", "HEAD")
-	if err != nil {
-		return nil, err
-	}
-	worktreeHead = strings.TrimSpace(worktreeHead)
-
-	baseSourceDir, err := dag.
-		Host().
-		Directory(r.forkRepoPath, dagger.HostDirectoryOpts{NoCache: true}). // bust cache for each Create call
-		AsGit().
-		Ref(worktreeHead).
-		Tree(dagger.GitRefTreeOpts{DiscardGitDir: true}).
-		Sync(ctx) // don't bust cache when loading from state
-	if err != nil {
-		return nil, fmt.Errorf("failed loading initial source directory: %w", err)
-	}
-
-	env, err := environment.New(ctx, dag, id, description, worktree, baseSourceDir)
+	// Create environment without Dagger
+	env, err := environment.New(ctx, nil, id, description, worktree, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -180,10 +162,8 @@ func (r *Repository) Create(ctx context.Context, dag *dagger.Client, description
 	return env, nil
 }
 
-// Get retrieves a full Environment with dagger client embedded for container operations.
-// Use this when you need to perform container operations like running commands, terminals, etc.
-// For basic metadata access without container operations, use Info() instead.
-func (r *Repository) Get(ctx context.Context, dag *dagger.Client, id string) (*environment.Environment, error) {
+// Get retrieves an Environment for container operations.
+func (r *Repository) Get(ctx context.Context, _ interface{}, id string) (*environment.Environment, error) {
 	if err := r.exists(ctx, id); err != nil {
 		return nil, err
 	}
@@ -198,7 +178,7 @@ func (r *Repository) Get(ctx context.Context, dag *dagger.Client, id string) (*e
 		return nil, err
 	}
 
-	env, err := environment.Load(ctx, dag, id, state, worktree)
+	env, err := environment.Load(ctx, nil, id, state, worktree)
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +186,6 @@ func (r *Repository) Get(ctx context.Context, dag *dagger.Client, id string) (*e
 	return env, nil
 }
 
-// Info retrieves environment metadata without requiring dagger operations.
 // This is more efficient than Get() when you only need access to configuration,
 // state, and other metadata without performing container operations.
 func (r *Repository) Info(ctx context.Context, id string) (*environment.EnvironmentInfo, error) {
