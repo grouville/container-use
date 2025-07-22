@@ -23,15 +23,16 @@ jobs:
 
       - name: Build Windows binaries
         run: |
-          go build -v -o container-use-windows-amd64.exe ./cmd/container-use
-          go build -v -o container-use-windows-arm64.exe ./cmd/container-use
+          go build -v -o container-use.exe ./cmd/container-use
+          Copy-Item container-use.exe cu.exe
         env:
           GOOS: windows
+          GOARCH: amd64
           
       - name: Create archive
         run: |
           $version = "${{ github.event.inputs.version }}".TrimStart('v')
-          Compress-Archive -Path container-use-windows-amd64.exe -DestinationPath "container-use_${version}_windows_amd64.zip"
+          Compress-Archive -Path container-use.exe, cu.exe -DestinationPath "container-use_${version}_windows_amd64.zip"
           
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
