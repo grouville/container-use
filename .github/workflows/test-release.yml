@@ -1,0 +1,74 @@
+name: Test Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v0.1.0-test)'
+        required: true
+        default: 'v0.1.0-test'
+
+jobs:
+  build-windows:
+    name: Build Windows Binary
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build Windows binaries
+        run: |
+          go build -v -o container-use-windows-amd64.exe ./cmd/container-use
+          go build -v -o container-use-windows-arm64.exe ./cmd/container-use
+        env:
+          GOOS: windows
+          
+      - name: Create archive
+        run: |
+          $version = "${{ github.event.inputs.version }}".TrimStart('v')
+          Compress-Archive -Path container-use-windows-amd64.exe -DestinationPath "container-use_${version}_windows_amd64.zip"
+          
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-binaries
+          path: |
+            *.zip
+            *.exe
+
+  create-release:
+    name: Create GitHub Release
+    needs: build-windows
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-binaries
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.version }}
+          name: Test Release ${{ github.event.inputs.version }}
+          body: |
+            Test release for Windows support
+            
+            ## What's New
+            - Windows binary for testing PowerShell installer
+            - This is a test release from PR #242
+          draft: false
+          prerelease: true
+          files: |
+            *.zip
+            *.exe
