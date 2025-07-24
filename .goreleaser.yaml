@@ -34,6 +34,9 @@ archives:
     ids:
       - container-use
     name_template: "{{ .ProjectName }}_{{ .Tag }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        formats: [zip]
     files:
       - README.md
       - LICENSE
@@ -160,7 +163,7 @@ chocolateys:
       - Support for multiple popular AI coding assistants
     release_notes: "https://github.com/dagger/container-use/releases/tag/{{ .Tag }}"
     api_key: "{{ .Env.CHOCOLATEY_API_KEY }}"
-    # skip_publish: auto
+    skip_publish: true  # Skip for test releases
 
 checksum:
   name_template: "checksums.txt"
