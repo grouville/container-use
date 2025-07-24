@@ -43,127 +43,129 @@ archives:
       - completions/*
       - man/*
 
-homebrew_casks:
-  - repository:
-      owner: "{{ .Env.GH_ORG_NAME }}"
-      name: homebrew-tap
-      branch: "{{ .ProjectName }}-{{ .Version }}"
-      token: "{{ .Env.GITHUB_TOKEN }}"
-      pull_request:
-        enabled: true
-    name: container-use
-    binary: container-use
-    skip_upload: auto # if the version is like v0.0.0-rc1, don't make the tap PR.
-    commit_author:
-      name: container-use-bot
-      email: noreply@dagger.io
-    url:
-      template: "https://github.com/{{ .Env.GH_ORG_NAME }}/container-use/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
-    homepage: "https://github.com/{{ .Env.GH_ORG_NAME }}/container-use"
-    description: "Containerized environments for coding agents"
-    manpages:
-      - man/container-use.1
-    completions:
-      bash: "completions/container-use.bash"
-      zsh: "completions/container-use.zsh"
-      fish: "completions/container-use.fish"
-    hooks:
-      post:
-        install: |
-          # remove quarantine xattr (note we don't do anything with signatures yet)
-          if File.exist?("/usr/bin/xattr")
-            system "/usr/bin/xattr", "-dr", "com.apple.quarantine", "#{staged_path}/container-use"
-          end
+# Temporarily disabled for test releases
+# homebrew_casks:
+#   - repository:
+#       owner: "{{ .Env.GH_ORG_NAME }}"
+#       name: homebrew-tap
+#       branch: "{{ .ProjectName }}-{{ .Version }}"
+#       token: "{{ .Env.GITHUB_TOKEN }}"
+#       pull_request:
+#         enabled: true
+#     name: container-use
+#     binary: container-use
+#     skip_upload: true # Skip for test releases
+#     commit_author:
+#       name: container-use-bot
+#       email: noreply@dagger.io
+#     url:
+#       template: "https://github.com/{{ .Env.GH_ORG_NAME }}/container-use/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+#     homepage: "https://github.com/{{ .Env.GH_ORG_NAME }}/container-use"
+#     description: "Containerized environments for coding agents"
+#     manpages:
+#       - man/container-use.1
+#     completions:
+#       bash: "completions/container-use.bash"
+#       zsh: "completions/container-use.zsh"
+#       fish: "completions/container-use.fish"
+#     hooks:
+#       post:
+#         install: |
+#           # remove quarantine xattr (note we don't do anything with signatures yet)
+#           if File.exist?("/usr/bin/xattr")
+#             system "/usr/bin/xattr", "-dr", "com.apple.quarantine", "#{staged_path}/container-use"
+#           end
+# 
+#           # Create cu symlink for backward compatibility
+#           FileUtils.ln_sf "#{HOMEBREW_PREFIX}/bin/container-use", "#{HOMEBREW_PREFIX}/bin/cu"
+# 
+#           # Install cu completions for backward compatibility
+#           bash_completion = "#{HOMEBREW_PREFIX}/etc/bash_completion.d"
+#           zsh_completion = "#{HOMEBREW_PREFIX}/share/zsh/site-functions"
+#           fish_completion = "#{HOMEBREW_PREFIX}/share/fish/vendor_completions.d"
+# 
+#           if File.exist?("#{staged_path}/completions/cu.bash")
+#             FileUtils.mkdir_p bash_completion
+#             FileUtils.cp "#{staged_path}/completions/cu.bash", "#{bash_completion}/cu"
+#           end
+# 
+#           if File.exist?("#{staged_path}/completions/cu.zsh")
+#             FileUtils.mkdir_p zsh_completion
+#             FileUtils.cp "#{staged_path}/completions/cu.zsh", "#{zsh_completion}/_cu"
+#           end
+# 
+#           if File.exist?("#{staged_path}/completions/cu.fish")
+#             FileUtils.mkdir_p fish_completion
+#             FileUtils.cp "#{staged_path}/completions/cu.fish", "#{fish_completion}/cu.fish"
+#           end
+#         uninstall: |
+#           # Remove cu symlink
+#           FileUtils.rm_f "#{HOMEBREW_PREFIX}/bin/cu"
+# 
+#           # Remove cu completions
+#           FileUtils.rm_f "#{HOMEBREW_PREFIX}/etc/bash_completion.d/cu"
+#           FileUtils.rm_f "#{HOMEBREW_PREFIX}/share/zsh/site-functions/_cu"
+#           FileUtils.rm_f "#{HOMEBREW_PREFIX}/share/fish/vendor_completions.d/cu.fish"
+# 
+# # https://goreleaser.com/customization/nix/
+# nix:
+#   - name: container-use
+#     repository:
+#       owner: "{{ .Env.GH_ORG_NAME }}"
+#       name: nix
+#     commit_author:
+#       name: container-use-bot
+#       email: noreply@dagger.io
+#     url_template: "https://github.com/{{ .Env.GH_ORG_NAME }}/container-use/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+#     homepage: "https://github.com/{{ .Env.GH_ORG_NAME }}/container-use"
+#     description: "Containerized environments for coding agents"
+#     license: "asl20"
+#     post_install: |
+#       installShellCompletion --cmd container-use \
+#         --bash <($out/bin/container-use completion bash) \
+#         --fish <($out/bin/container-use completion fish) \
+#         --zsh <($out/bin/container-use completion zsh)
+#       
+#       # Create cu symlink for backward compatibility
+#       ln -sf $out/bin/container-use $out/bin/cu
+#       
+#       # Install cu completions for backward compatibility
+#       installShellCompletion --cmd cu \
+#         --bash <($out/bin/cu completion bash) \
+#         --fish <($out/bin/cu completion fish) \
+#         --zsh <($out/bin/cu completion zsh)
 
-          # Create cu symlink for backward compatibility
-          FileUtils.ln_sf "#{HOMEBREW_PREFIX}/bin/container-use", "#{HOMEBREW_PREFIX}/bin/cu"
-
-          # Install cu completions for backward compatibility
-          bash_completion = "#{HOMEBREW_PREFIX}/etc/bash_completion.d"
-          zsh_completion = "#{HOMEBREW_PREFIX}/share/zsh/site-functions"
-          fish_completion = "#{HOMEBREW_PREFIX}/share/fish/vendor_completions.d"
-
-          if File.exist?("#{staged_path}/completions/cu.bash")
-            FileUtils.mkdir_p bash_completion
-            FileUtils.cp "#{staged_path}/completions/cu.bash", "#{bash_completion}/cu"
-          end
-
-          if File.exist?("#{staged_path}/completions/cu.zsh")
-            FileUtils.mkdir_p zsh_completion
-            FileUtils.cp "#{staged_path}/completions/cu.zsh", "#{zsh_completion}/_cu"
-          end
-
-          if File.exist?("#{staged_path}/completions/cu.fish")
-            FileUtils.mkdir_p fish_completion
-            FileUtils.cp "#{staged_path}/completions/cu.fish", "#{fish_completion}/cu.fish"
-          end
-        uninstall: |
-          # Remove cu symlink
-          FileUtils.rm_f "#{HOMEBREW_PREFIX}/bin/cu"
-
-          # Remove cu completions
-          FileUtils.rm_f "#{HOMEBREW_PREFIX}/etc/bash_completion.d/cu"
-          FileUtils.rm_f "#{HOMEBREW_PREFIX}/share/zsh/site-functions/_cu"
-          FileUtils.rm_f "#{HOMEBREW_PREFIX}/share/fish/vendor_completions.d/cu.fish"
-
-# https://goreleaser.com/customization/nix/
-nix:
-  - name: container-use
-    repository:
-      owner: "{{ .Env.GH_ORG_NAME }}"
-      name: nix
-    commit_author:
-      name: container-use-bot
-      email: noreply@dagger.io
-    url_template: "https://github.com/{{ .Env.GH_ORG_NAME }}/container-use/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
-    homepage: "https://github.com/{{ .Env.GH_ORG_NAME }}/container-use"
-    description: "Containerized environments for coding agents"
-    license: "asl20"
-    post_install: |
-      installShellCompletion --cmd container-use \
-        --bash <($out/bin/container-use completion bash) \
-        --fish <($out/bin/container-use completion fish) \
-        --zsh <($out/bin/container-use completion zsh)
-      
-      # Create cu symlink for backward compatibility
-      ln -sf $out/bin/container-use $out/bin/cu
-      
-      # Install cu completions for backward compatibility
-      installShellCompletion --cmd cu \
-        --bash <($out/bin/cu completion bash) \
-        --fish <($out/bin/cu completion fish) \
-        --zsh <($out/bin/cu completion zsh)
-
-chocolateys:
-  - name: container-use
-    ids:
-      - container-use-archive
-    owners: Dagger
-    title: Container Use
-    authors: Dagger Team
-    project_url: https://github.com/dagger/container-use
-    url_template: "https://github.com/dagger/container-use/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
-    icon_url: https://raw.githubusercontent.com/dagger/container-use/main/docs/images/dagger-icon.png
-    copyright: 2025 Dagger, Inc.
-    license_url: https://github.com/dagger/container-use/blob/main/LICENSE
-    require_license_acceptance: false
-    project_source_url: https://github.com/dagger/container-use
-    docs_url: https://container-use.com/
-    bug_tracker_url: https://github.com/dagger/container-use/issues
-    tags: "container docker mcp agent development cli devtools"
-    summary: Containerized environments for coding agents
-    description: |
-      Container Use provides isolated, containerized environments for AI coding agents using Docker and Git.
-      
-      Features:
-      - Isolated environments for AI agents to work safely
-      - Git-based version control for all changes
-      - Docker containers for consistent development environments
-      - Model Context Protocol (MCP) integration
-      - Support for multiple popular AI coding assistants
-    release_notes: "https://github.com/dagger/container-use/releases/tag/{{ .Tag }}"
-    api_key: "{{ .Env.CHOCOLATEY_API_KEY }}"
-    skip_publish: true  # Skip for test releases
+# Temporarily disabled for test releases
+# chocolateys:
+#   - name: container-use
+#     ids:
+#       - container-use-archive
+#     owners: Dagger
+#     title: Container Use
+#     authors: Dagger Team
+#     project_url: https://github.com/dagger/container-use
+#     url_template: "https://github.com/dagger/container-use/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+#     icon_url: https://raw.githubusercontent.com/dagger/container-use/main/docs/images/dagger-icon.png
+#     copyright: 2025 Dagger, Inc.
+#     license_url: https://github.com/dagger/container-use/blob/main/LICENSE
+#     require_license_acceptance: false
+#     project_source_url: https://github.com/dagger/container-use
+#     docs_url: https://container-use.com/
+#     bug_tracker_url: https://github.com/dagger/container-use/issues
+#     tags: "container docker mcp agent development cli devtools"
+#     summary: Containerized environments for coding agents
+#     description: |
+#       Container Use provides isolated, containerized environments for AI coding agents using Docker and Git.
+#       
+#       Features:
+#       - Isolated environments for AI agents to work safely
+#       - Git-based version control for all changes
+#       - Docker containers for consistent development environments
+#       - Model Context Protocol (MCP) integration
+#       - Support for multiple popular AI coding assistants
+#     release_notes: "https://github.com/dagger/container-use/releases/tag/{{ .Tag }}"
+#     api_key: "{{ .Env.CHOCOLATEY_API_KEY }}"
+#     skip_publish: true  # Skip for test releases
 
 checksum:
   name_template: "checksums.txt"
